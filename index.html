@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Smart Tic-Tac-Toe</title>
+    <style>
+      :root {
+        --bg-light: #f9f9fb;
+        --bg-dark: #121212;
+        --text-light: #222;
+        --text-dark: #f1f1f1;
+        --primary: #10b981;
+        --secondary: #6366f1;
+        --cell-bg: #1f2937;
+        --cell-hover: #374151;
+        --win-highlight: #22c55e;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", sans-serif;
+        background-color: var(--bg-light);
+        color: var(--text-light);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 1rem;
+        transition: all 0.3s ease;
+      }
+
+      body.dark {
+        background-color: var(--bg-dark);
+        color: var(--text-dark);
+      }
+
+      h1 {
+        font-size: 2.2rem;
+        margin-bottom: 0.5rem;
+      }
+
+      .top-bar {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1rem;
+      }
+
+      .top-bar select,
+      .top-bar button {
+        padding: 0.4rem 1rem;
+        font-size: 1rem;
+        border-radius: 8px;
+        border: none;
+        outline: none;
+        cursor: pointer;
+        background-color: var(--primary);
+        color: white;
+        transition: background 0.3s;
+      }
+
+      .top-bar button:hover {
+        background-color: #059669;
+      }
+
+      .status,
+      .scoreboard {
+        margin-bottom: 0.7rem;
+        font-weight: 500;
+      }
+
+      .scoreboard {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+      }
+
+      .board {
+        display: grid;
+        grid-template-columns: repeat(3, 100px);
+        grid-template-rows: repeat(3, 100px);
+        gap: 8px;
+        margin: 1rem 0;
+      }
+
+      .cell {
+        background-color: var(--cell-bg);
+        color: white;
+        font-size: 2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: background 0.2s ease;
+      }
+
+      .cell:hover {
+        background-color: var(--cell-hover);
+      }
+
+      .cell.x {
+        color: var(--primary);
+      }
+
+      .cell.o {
+        color: var(--secondary);
+      }
+
+      .cell.winner {
+        background-color: var(--win-highlight) !important;
+        color: black;
+        font-weight: bold;
+      }
+
+      .restart {
+        padding: 0.6rem 1.4rem;
+        font-size: 1rem;
+        border: none;
+        border-radius: 10px;
+        background-color: var(--secondary);
+        color: white;
+        cursor: pointer;
+      }
+
+      .restart:hover {
+        background-color: #4f46e5;
+      }
+
+      @media (max-width: 500px) {
+        .board {
+          grid-template-columns: repeat(3, 80px);
+          grid-template-rows: repeat(3, 80px);
+        }
+      }
+    </style>
+  </head>
+  <body class="light">
+    <h1>Tic-Tac-Toe</h1>
+    <div class="top-bar">
+      <select id="mode">
+        <option value="ai">Vs AI</option>
+        <option value="2p">2 Player</option>
+      </select>
+      <button id="toggle-theme">🌙</button>
+    </div>
+
+    <div class="status" id="status">Player X's Turn</div>
+
+    <div class="scoreboard">
+      <span>Round: <span id="round">1</span>/7</span>
+      <span>Player X: <span id="scoreX">0</span></span>
+      <span>Player O: <span id="scoreO">0</span></span>
+    </div>
+
+    <div class="board" id="board">
+      <div class="cell" data-index="0"></div>
+      <div class="cell" data-index="1"></div>
+      <div class="cell" data-index="2"></div>
+      <div class="cell" data-index="3"></div>
+      <div class="cell" data-index="4"></div>
+      <div class="cell" data-index="5"></div>
+      <div class="cell" data-index="6"></div>
+      <div class="cell" data-index="7"></div>
+      <div class="cell" data-index="8"></div>
+    </div>
+
+    <button class="restart" id="restart">Restart Match</button>
+
+    <!-- Sound Effects -->
+    <audio
+      id="click-sound"
+      src="https://www.soundjay.com/button/sounds/button-16.mp3"
+    ></audio>
+    <audio
+      id="win-sound"
+      src="https://www.soundjay.com/button/sounds/button-10.mp3"
+    ></audio>
+    <audio
+      id="draw-sound"
+      src="https://www.soundjay.com/button/sounds/button-3.mp3"
+    ></audio>
+
+    <script>
+      const cells = document.querySelectorAll(".cell");
+      const board = document.getElementById("board");
+      const statusText = document.getElementById("status");
+      const scoreX = document.getElementById("scoreX");
+      const scoreO = document.getElementById("scoreO");
+      const roundEl = document.getElementById("round");
+      const restartBtn = document.getElementById("restart");
+      const toggleTheme = document.getElementById("toggle-theme");
+      const modeSelect = document.getElementById("mode");
+
+      const clickSound = document.getElementById("click-sound");
+      const winSound = document.getElementById("win-sound");
+      const drawSound = document.getElementById("draw-sound");
+
+      let currentPlayer = "X";
+      let gameBoard = Array(9).fill("");
+      let isGameOver = false;
+      let round = 1;
+      let score = { X: 0, O: 0 };
+      let mode = "ai";
+
+      modeSelect.addEventListener("change", () => {
+        mode = modeSelect.value;
+        resetMatch();
+      });
+
+      toggleTheme.addEventListener("click", () => {
+        document.body.classList.toggle("dark");
+        toggleTheme.textContent = document.body.classList.contains("dark")
+          ? "☀️"
+          : "🌙";
+      });
+
+      function updateUI() {
+        gameBoard.forEach((val, i) => {
+          cells[i].textContent = val;
+          cells[i].className = "cell " + val.toLowerCase();
+        });
+        statusText.textContent = isGameOver
+          ? "Game Over"
+          : `Player ${currentPlayer}'s Turn`;
+        scoreX.textContent = score.X;
+        scoreO.textContent = score.O;
+        roundEl.textContent = round <= 7 ? round : 7;
+      }
+
+      function handleClick(e) {
+        const index = +e.target.dataset.index;
+        if (isGameOver || gameBoard[index]) return;
+
+        clickSound.play();
+        gameBoard[index] = currentPlayer;
+        updateUI();
+
+        if (checkWin(currentPlayer)) {
+          winSound.play();
+          score[currentPlayer]++;
+          highlightWin(currentPlayer);
+          statusText.textContent = `Player ${currentPlayer} Wins!`;
+          isGameOver = true;
+          nextRound();
+        } else if (gameBoard.every((c) => c)) {
+          drawSound.play();
+          statusText.textContent = "It's a draw!";
+          isGameOver = true;
+          nextRound();
+        } else {
+          currentPlayer = currentPlayer === "X" ? "O" : "X";
+          updateUI();
+
+          if (mode === "ai" && currentPlayer === "O") {
+            setTimeout(() => {
+              const move = minimax(gameBoard, "O").index;
+              gameBoard[move] = "O";
+              clickSound.play();
+              updateUI();
+
+              if (checkWin("O")) {
+                winSound.play();
+                score.O++;
+                highlightWin("O");
+                statusText.textContent = "AI Wins!";
+                isGameOver = true;
+                nextRound();
+              } else if (gameBoard.every((c) => c)) {
+                drawSound.play();
+                statusText.textContent = "It's a draw!";
+                isGameOver = true;
+                nextRound();
+              } else {
+                currentPlayer = "X";
+                updateUI();
+              }
+            }, 500);
+          }
+        }
+      }
+
+      function highlightWin(player) {
+        winningCombos().forEach((combo) => {
+          if (combo.every((i) => gameBoard[i] === player)) {
+            combo.forEach((i) => cells[i].classList.add("winner"));
+          }
+        });
+      }
+
+      function checkWin(player) {
+        return winningCombos().some((combo) =>
+          combo.every((i) => gameBoard[i] === player)
+        );
+      }
+
+      function winningCombos() {
+        return [
+          [0, 1, 2],
+          [3, 4, 5],
+          [6, 7, 8],
+          [0, 3, 6],
+          [1, 4, 7],
+          [2, 5, 8],
+          [0, 4, 8],
+          [2, 4, 6],
+        ];
+      }
+
+      function minimax(boardState, player) {
+        const avail = boardState
+          .map((v, i) => (v === "" ? i : null))
+          .filter((i) => i !== null);
+
+        if (checkWinOnBoard(boardState, "X")) return { score: -10 };
+        if (checkWinOnBoard(boardState, "O")) return { score: 10 };
+        if (avail.length === 0) return { score: 0 };
+
+        const moves = [];
+        for (let i of avail) {
+          const newBoard = [...boardState];
+          newBoard[i] = player;
+          const result = minimax(newBoard, player === "O" ? "X" : "O");
+          moves.push({ index: i, score: result.score });
+        }
+
+        return player === "O"
+          ? moves.reduce((best, move) =>
+              move.score > best.score ? move : best
+            )
+          : moves.reduce((best, move) =>
+              move.score < best.score ? move : best
+            );
+      }
+
+      function checkWinOnBoard(b, player) {
+        return winningCombos().some((c) => c.every((i) => b[i] === player));
+      }
+
+      function nextRound() {
+        setTimeout(() => {
+          if (score.X >= 5 || score.O >= 5 || round >= 7) {
+            alert(
+              score.X > score.O
+                ? "🎉 Player X Wins the Match!"
+                : score.O > score.X
+                ? "🤖 Player O Wins the Match!"
+                : "🤝 It's a Tie!"
+            );
+            resetMatch();
+          } else {
+            round++;
+            gameBoard = Array(9).fill("");
+            isGameOver = false;
+            currentPlayer = "X";
+            updateUI();
+          }
+        }, 1000);
+      }
+
+      function resetMatch() {
+        score = { X: 0, O: 0 };
+        round = 1;
+        gameBoard = Array(9).fill("");
+        isGameOver = false;
+        currentPlayer = "X";
+        updateUI();
+      }
+
+      cells.forEach((cell) => cell.addEventListener("click", handleClick));
+      restartBtn.addEventListener("click", resetMatch);
+      updateUI();
+    </script>
+  </body>
+</html>
