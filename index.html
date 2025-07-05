@@ -270,7 +270,6 @@
     ></audio>
 
     <script>
-      /* =========  State & DOM handles  ========= */
       const boardEl = document.getElementById("board");
       const statusEl = document.getElementById("status");
       const bannerEl = document.getElementById("winnerBanner");
@@ -290,7 +289,6 @@
         taunt: document.getElementById("taunt-sound"),
       };
 
-      /* =========  Game variables  ========= */
       let board = Array(9).fill("");
       let cells = [];
       let current = "X";
@@ -302,76 +300,16 @@
       let timer,
         timeLeft = 10;
 
-      /* =========  Voice Recognition Setup  ========= */
-      let recognition,
-        voiceActive = false;
-
-      if (
-        "SpeechRecognition" in window ||
-        "webkitSpeechRecognition" in window
-      ) {
-        const SpeechRecognition =
-          window.SpeechRecognition || window.webkitSpeechRecognition;
-        recognition = new SpeechRecognition();
-        recognition.lang = "en-US";
-        recognition.interimResults = false;
-        recognition.maxAlternatives = 1;
-        recognition.continuous = true;
-
-        recognition.onresult = (event) => {
-          if (isGameOver || aiThinking) return; // don't accept voice input now
-          const transcript =
-            event.results[event.results.length - 1][0].transcript.trim();
-          // extract numbers 1-9 from transcript
-          const number = transcript.match(/[1-9]/);
-          if (number) {
-            const idx = parseInt(number[0]) - 1;
-            if (
-              board[idx] === "" &&
-              current === "X" &&
-              (mode === "2p" || mode.startsWith("ai"))
-            ) {
-              handleTurn(idx);
-            }
-          }
-        };
-        recognition.onerror = (e) => {
-          console.warn("Speech recognition error:", e.error);
-        };
-      } else {
-        voiceInstructions.textContent =
-          "Voice control is not supported in this browser.";
-        voiceToggleBtn.disabled = true;
-      }
-
-      /* Voice toggle button */
-      voiceToggleBtn.onclick = () => {
-        if (!recognition) return;
-        if (voiceActive) {
-          recognition.stop();
-          voiceActive = false;
-          voiceToggleBtn.textContent = "🎤";
-          voiceInstructions.textContent =
-            "Voice control: Say a number 1 to 9 to place your move.";
-        } else {
-          recognition.start();
-          voiceActive = true;
-          voiceToggleBtn.textContent = "🛑";
-          voiceInstructions.textContent =
-            "Listening... Say a number 1 to 9 to play.";
-        }
-      };
-
-      /* =========  Theme toggle  ========= */
-      const themeBtn = document.getElementById("toggle-theme");
-      themeBtn.onclick = () => {
+      /* ========= Theme Toggle ========= */
+      document.getElementById("toggle-theme").onclick = () => {
         document.body.classList.toggle("dark");
-        themeBtn.textContent = document.body.classList.contains("dark")
+        const isDark = document.body.classList.contains("dark");
+        document.getElementById("toggle-theme").textContent = isDark
           ? "☀️"
           : "🌙";
       };
 
-      /* =========  Build board  ========= */
+      /* ========= Build Board ========= */
       for (let i = 0; i < 9; i++) {
         const c = document.createElement("div");
         c.className = "cell";
@@ -381,7 +319,7 @@
         c.addEventListener("click", () => handleTurn(i));
       }
 
-      /* =========  UI helpers  ========= */
+      /* ========= Update UI ========= */
       function updateUI() {
         board.forEach((val, i) => {
           const cell = cells[i];
@@ -394,29 +332,25 @@
         scoreXEl.textContent = score.X;
         scoreOEl.textContent = score.O;
         roundEl.textContent = round;
-        /* persist */
         localStorage.setItem(
           "tic-tac-toe-state",
           JSON.stringify({ board, current, round, score, mode })
         );
       }
 
-      /* =========  Game logic  ========= */
+      /* ========= Handle Turn ========= */
       function handleTurn(idx) {
         if (isGameOver || aiThinking || board[idx]) return;
 
         sfx.click.play();
         if ("vibrate" in navigator) navigator.vibrate(100);
-
         board[idx] = current;
         updateUI();
         clearInterval(timer);
 
-        /* check outcome */
         if (checkWin(current)) return onWin(current);
         if (board.every((c) => c)) return onDraw();
 
-        /* switch */
         current = current === "X" ? "O" : "X";
         updateUI();
 
@@ -424,6 +358,7 @@
         else startTimer();
       }
 
+      /* ========= AI Move ========= */
       function aiMove() {
         aiThinking = true;
         boardEl.classList.add("no-click");
@@ -439,7 +374,6 @@
                 ? randomMove()
                 : minimax([...board], "O").index;
           } else {
-            // hard
             move = minimax([...board], "O").index;
           }
 
@@ -452,6 +386,7 @@
         }, 800);
       }
 
+      /* ========= Win/Draw ========= */
       function onWin(p) {
         isGameOver = true;
         score[p]++;
@@ -460,20 +395,17 @@
         highlightWin(p);
         setTimeout(nextRound, 1500);
       }
-
       function onDraw() {
         isGameOver = true;
         sfx.draw.play();
         bannerEl.textContent = "🤝 It's a Draw!";
         setTimeout(nextRound, 1500);
       }
-
       function nextRound() {
         historyUl.insertAdjacentHTML(
           "beforeend",
           `<li>Round ${round}: X=${score.X}, O=${score.O}</li>`
         );
-
         if (score.X >= 5 || score.O >= 5 || round >= 7) {
           bannerEl.textContent =
             score.X > score.O
@@ -482,12 +414,11 @@
               ? "🤖 Player O Wins the Match!"
               : "Match Tied!";
           if (voiceActive) recognition.stop();
-          return; // stop game
+          return;
         }
         round++;
         resetBoard();
       }
-
       function resetBoard() {
         board = Array(9).fill("");
         current = "X";
@@ -497,7 +428,7 @@
         startTimer();
       }
 
-      /* =========  Timer  ========= */
+      /* ========= Timer ========= */
       function startTimer() {
         clearInterval(timer);
         timeLeft = 10;
@@ -516,7 +447,7 @@
         }, 1000);
       }
 
-      /* =========  Utility funcs  ========= */
+      /* ========= Helpers ========= */
       function winningCombos() {
         return [
           [0, 1, 2],
@@ -544,8 +475,6 @@
           .filter((x) => x !== null);
         return free[Math.floor(Math.random() * free.length)];
       }
-
-      /* =========  Minimax  ========= */
       function minimax(b, player) {
         const human = "X",
           ai = "O";
@@ -579,7 +508,113 @@
         }
       }
 
-      /* =========  Persisted state  ========= */
+      /* ========= Voice Recognition ========= */
+      let recognition,
+        voiceActive = false;
+
+      if (
+        "SpeechRecognition" in window ||
+        "webkitSpeechRecognition" in window
+      ) {
+        const SpeechRecognition =
+          window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SpeechRecognition();
+        recognition.lang = "en-US";
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+        recognition.continuous = true;
+
+        recognition.onresult = (event) => {
+          if (isGameOver || aiThinking || current !== "X") return;
+          const transcript =
+            event.results[event.results.length - 1][0].transcript.toLowerCase();
+          console.log("Heard:", transcript);
+
+          const wordToNumber = {
+            one: 1,
+            two: 2,
+            three: 3,
+            four: 4,
+            five: 5,
+            six: 6,
+            seven: 7,
+            eight: 8,
+            nine: 9,
+          };
+
+          const words = transcript.split(/\s+/);
+          for (let word of words) {
+            let num = parseInt(word);
+            if (isNaN(num)) num = wordToNumber[word];
+            if (num >= 1 && num <= 9) {
+              const idx = num - 1;
+              if (board[idx] === "") {
+                handleTurn(idx);
+              } else {
+                statusEl.textContent = `Cell ${num} is already taken.`;
+              }
+              return;
+            }
+          }
+
+          statusEl.textContent = `🎤 Didn't catch a number (1-9). Try again.`;
+        };
+
+        recognition.onerror = (e) => {
+          console.warn("Voice Error:", e.error);
+        };
+      } else {
+        voiceInstructions.textContent =
+          "🎤 Voice play not supported in this browser.";
+        voiceToggleBtn.disabled = true;
+      }
+
+      voiceToggleBtn.onclick = () => {
+        if (!recognition) return;
+        if (voiceActive) {
+          recognition.stop();
+          voiceActive = false;
+          voiceToggleBtn.textContent = "🎤";
+          voiceInstructions.textContent =
+            "Voice control: Say a number from 1–9";
+        } else {
+          recognition.start();
+          voiceActive = true;
+          voiceToggleBtn.textContent = "🛑";
+          voiceInstructions.textContent = "🎙️ Listening... Say a number 1 to 9";
+        }
+      };
+
+      /* ========= Controls ========= */
+      modeSel.onchange = (e) => {
+        mode = e.target.value;
+        resetBoard();
+        if (voiceActive) {
+          recognition.stop();
+          voiceActive = false;
+          voiceToggleBtn.textContent = "🎤";
+        }
+      };
+      document.getElementById("restart").onclick = () => {
+        score = { X: 0, O: 0 };
+        round = 1;
+        historyUl.innerHTML = "";
+        localStorage.removeItem("tic-tac-toe-state");
+        resetBoard();
+        if (voiceActive) {
+          recognition.stop();
+          voiceActive = false;
+          voiceToggleBtn.textContent = "🎤";
+        }
+      };
+      window.addEventListener("keydown", (e) => {
+        const k = parseInt(e.key);
+        if (!isNaN(k) && k >= 1 && k <= 9 && board[k - 1] === "")
+          handleTurn(k - 1);
+      });
+      window.addEventListener("beforeunload", () => clearInterval(timer));
+
+      /* ========= Load State ========= */
       (function hydrate() {
         const saved = localStorage.getItem("tic-tac-toe-state");
         if (saved) {
@@ -594,39 +629,6 @@
         updateUI();
         startTimer();
       })();
-
-      /* =========  Controls  ========= */
-      modeSel.onchange = (e) => {
-        mode = e.target.value;
-        resetBoard();
-        if (voiceActive) {
-          recognition.stop();
-          voiceActive = false;
-          voiceToggleBtn.textContent = "🎤";
-          voiceInstructions.textContent =
-            "Voice control: Say a number 1 to 9 to place your move.";
-        }
-      };
-      document.getElementById("restart").onclick = () => {
-        score = { X: 0, O: 0 };
-        round = 1;
-        historyUl.innerHTML = "";
-        localStorage.removeItem("tic-tac-toe-state");
-        resetBoard();
-        if (voiceActive) {
-          recognition.stop();
-          voiceActive = false;
-          voiceToggleBtn.textContent = "🎤";
-          voiceInstructions.textContent =
-            "Voice control: Say a number 1 to 9 to place your move.";
-        }
-      };
-      window.addEventListener("keydown", (e) => {
-        const k = parseInt(e.key);
-        if (!isNaN(k) && k >= 1 && k <= 9 && board[k - 1] === "")
-          handleTurn(k - 1);
-      });
-      window.addEventListener("beforeunload", () => clearInterval(timer));
     </script>
   </body>
 </html>
