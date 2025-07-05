@@ -227,7 +227,6 @@
         <option value="2p">2 Player</option>
       </select>
       <button id="toggle-theme">🌙</button>
-      <button id="voiceToggle" title="Toggle voice control">🎤</button>
     </div>
 
     <div id="voiceInstructions">
@@ -279,8 +278,6 @@
       const scoreOEl = document.getElementById("scoreO");
       const historyUl = document.getElementById("historyList");
       const modeSel = document.getElementById("mode");
-      const voiceToggleBtn = document.getElementById("voiceToggle");
-      const voiceInstructions = document.getElementById("voiceInstructions");
 
       const sfx = {
         click: document.getElementById("click-sound"),
@@ -413,7 +410,6 @@
               : score.O > score.X
               ? "🤖 Player O Wins the Match!"
               : "Match Tied!";
-          if (voiceActive) recognition.stop();
           return;
         }
         round++;
@@ -508,92 +504,10 @@
         }
       }
 
-      /* ========= Voice Recognition ========= */
-      let recognition,
-        voiceActive = false;
-
-      if (
-        "SpeechRecognition" in window ||
-        "webkitSpeechRecognition" in window
-      ) {
-        const SpeechRecognition =
-          window.SpeechRecognition || window.webkitSpeechRecognition;
-        recognition = new SpeechRecognition();
-        recognition.lang = "en-US";
-        recognition.interimResults = false;
-        recognition.maxAlternatives = 1;
-        recognition.continuous = true;
-
-        recognition.onresult = (event) => {
-          if (isGameOver || aiThinking || current !== "X") return;
-          const transcript =
-            event.results[event.results.length - 1][0].transcript.toLowerCase();
-          console.log("Heard:", transcript);
-
-          const wordToNumber = {
-            one: 1,
-            two: 2,
-            three: 3,
-            four: 4,
-            five: 5,
-            six: 6,
-            seven: 7,
-            eight: 8,
-            nine: 9,
-          };
-
-          const words = transcript.split(/\s+/);
-          for (let word of words) {
-            let num = parseInt(word);
-            if (isNaN(num)) num = wordToNumber[word];
-            if (num >= 1 && num <= 9) {
-              const idx = num - 1;
-              if (board[idx] === "") {
-                handleTurn(idx);
-              } else {
-                statusEl.textContent = `Cell ${num} is already taken.`;
-              }
-              return;
-            }
-          }
-
-          statusEl.textContent = `🎤 Didn't catch a number (1-9). Try again.`;
-        };
-
-        recognition.onerror = (e) => {
-          console.warn("Voice Error:", e.error);
-        };
-      } else {
-        voiceInstructions.textContent =
-          "🎤 Voice play not supported in this browser.";
-        voiceToggleBtn.disabled = true;
-      }
-
-      voiceToggleBtn.onclick = () => {
-        if (!recognition) return;
-        if (voiceActive) {
-          recognition.stop();
-          voiceActive = false;
-          voiceToggleBtn.textContent = "🎤";
-          voiceInstructions.textContent =
-            "Voice control: Say a number from 1–9";
-        } else {
-          recognition.start();
-          voiceActive = true;
-          voiceToggleBtn.textContent = "🛑";
-          voiceInstructions.textContent = "🎙️ Listening... Say a number 1 to 9";
-        }
-      };
-
       /* ========= Controls ========= */
       modeSel.onchange = (e) => {
         mode = e.target.value;
         resetBoard();
-        if (voiceActive) {
-          recognition.stop();
-          voiceActive = false;
-          voiceToggleBtn.textContent = "🎤";
-        }
       };
       document.getElementById("restart").onclick = () => {
         score = { X: 0, O: 0 };
@@ -601,11 +515,6 @@
         historyUl.innerHTML = "";
         localStorage.removeItem("tic-tac-toe-state");
         resetBoard();
-        if (voiceActive) {
-          recognition.stop();
-          voiceActive = false;
-          voiceToggleBtn.textContent = "🎤";
-        }
       };
       window.addEventListener("keydown", (e) => {
         const k = parseInt(e.key);
